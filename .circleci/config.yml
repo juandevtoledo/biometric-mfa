@@ -1,0 +1,64 @@
+version: 2.1
+orbs:
+  envsubst: sawadashota/envsubst@volatile
+jobs:
+  build_and_test:
+    docker:
+      - image: circleci/openjdk:11-jdk-browsers
+    steps:
+      - envsubst/install
+      - checkout
+      - run:
+            name: Check code on Sonar server
+            command: |
+              SONAR_LOGIN=$SONAR_LOGIN SONAR_ORGANIZATION=$SONAR_ORGANIZATION SONAR_HOST_URL=$SONAR_HOST_URL SONAR_PROJECTKEY=$SONAR_PROJECTKEY envsubst < gradle.properties > gradle.conf
+              mv gradle.conf gradle.properties
+              if [[ -z $CIRCLE_PULL_REQUEST ]] && [[ $CIRCLE_BRANCH == master ]]
+              then
+                echo '$CIRCLE_PULL_REQUEST is empty and is master'
+                ./gradlew sonarqube
+              elif [[ -z $CIRCLE_PULL_REQUEST ]] && [[ $CIRCLE_BRANCH != master ]]
+              then
+                echo '$CIRCLE_PULL_REQUEST is empty and is a branch'
+                ./gradlew -Dsonar.branch.name="${CIRCLE_BRANCH}" -Dsonar.branch.target=master sonarqube
+              else
+                echo '$CIRCLE_PULL_REQUEST is NOT empty and this is a pull request'
+                ./gradlew -Dsonar.pullrequest.branch="${CIRCLE_BRANCH}" -Dsonar.pullrequest.base=master -Dsonar.pullrequest.key="${CIRCLE_PULL_REQUEST##*/}" sonarqube
+              fi
+      - run:
+          name: Test and build
+          command: |
+            ./gradlew clean build install --refresh-dependencies
+      - persist_to_workspace:
+          root: /home/circleci/project
+          paths:
+            - build/libs
+  release:
+    docker:
+      - image: circleci/openjdk:8-jdk-browsers
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - 'a7:e1:6d:80:d5:dc:59:50:0d:5d:10:8f:76:9b:fa:e4'
+      - checkout
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: /home/circleci/project
+      - run:
+          name: Release new artifact
+          command: |
+            git config --global user.email "ubuntu@box176.localdomain"
+            git config --global user.name "Ubuntu"
+            ./gradlew release -Prelease.useAutomaticVersion=true
+            ./gradlew artifactoryPublish
+workflows:
+  build-n-deploy:
+    jobs:
+      - build_and_test:
+          context: build-and-test
+      - release:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build_and_test

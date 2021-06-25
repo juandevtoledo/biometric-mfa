@@ -1,0 +1,144 @@
+buildscript {
+
+  ext {
+    springBootVersion = '2.1.7.RELEASE'
+    springWeb = '5.1.5.RELEASE'
+    springCloud = '2.1.2.RELEASE'
+    jacocoVersion = '0.8.4'
+    jfrogUser = System.getenv('JFROG_USER')
+    jfrogPassword = System.getenv('JFROG_PASSWORD')
+    jfrogContextUrl = System.getenv('JFROG_CONTEXT_URL')
+  }
+
+  repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+    maven {
+      url "https://piso19.jfrog.io/piso19/libs-release"
+      credentials {
+        username = "$jfrogUser"
+        password = "$jfrogPassword"
+      }
+    }
+    maven {
+      url "https://piso19.jfrog.io/piso19/libs-snapshot"
+      credentials {
+        username = "$jfrogUser"
+        password = "$jfrogPassword"
+      }
+    }
+  }
+  dependencies {
+    classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    classpath 'net.researchgate:gradle-release:2.6.0'
+    classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:2.7.1"
+    classpath "org.jfrog.buildinfo:build-info-extractor-gradle:latest.release"
+  }
+
+}
+
+apply plugin: "org.sonarqube"
+apply from: "$rootDir/gradle/all.gradle"
+apply from: "$rootDir/gradle/release.gradle"
+
+release {
+  tagTemplate = '$name-$version'
+  failOnCommitNeeded = false
+  failOnPublishNeeded = true
+  failOnSnapshotDependencies = false
+  failOnUnversionedFiles = true
+  failOnUpdateNeeded = true
+  revertOnFail = true
+  preCommitText = '[ci skip] [CircleCI] '
+  preTagCommitMessage = 'release '
+  tagCommitMessage = 'release '
+  newVersionCommitMessage = 'release '
+  buildTasks = ['build', 'releaseBuild', 'publishCurrent']
+
+}
+
+task releaseBuild {
+  dependsOn(
+          'biometric-api:build',
+          'biometric-implement:build'
+  )
+}
+
+task publishCurrent {
+  dependsOn('artifactoryPublish')
+}
+
+task jacocoRootReport(type: org.gradle.testing.jacoco.tasks.JacocoReport) {
+  dependsOn = subprojects.test
+  additionalSourceDirs = files(subprojects.sourceSets.main.allSource.srcDirs)
+  sourceDirectories = files(subprojects.sourceSets.main.allSource.srcDirs)
+  classDirectories = files(subprojects.sourceSets.main.output)
+  executionData = files(subprojects.jacocoTestReport.executionData)
+  reports {
+    html.enabled = true
+    xml.enabled = true
+    csv.enabled = false
+  }
+  onlyIf = {
+    true
+  }
+  doFirst {
+    executionData = files(executionData.findAll {
+      it.exists()
+    })
+  }
+}
+
+def allTestCoverageFile = "${rootProject.buildDir}/reports/jacoco/jacocoRootReport/jacocoRootReport.xml"
+
+subprojects {
+  apply plugin: 'java'
+
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
+
+
+  repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+    maven {
+      url "https://piso19.jfrog.io/piso19/libs-release"
+      credentials {
+        username = "$jfrogUser"
+        password = "$jfrogPassword"
+      }
+    }
+    maven {
+      url "https://piso19.jfrog.io/piso19/libs-snapshot"
+      credentials {
+        username = "$jfrogUser"
+        password = "$jfrogPassword"
+      }
+    }
+  }
+
+  dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+
+    testImplementation 'org.jacoco:org.jacoco.core:0.8.4'
+    testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
+    testImplementation 'org.mockito:mockito-inline:2.13.0'
+
+  }
+
+  sonarqube {
+    properties {
+      property 'sonar.exclusions',
+              "**/com/lulobank/core/utils/OnboardingStatus.java, "
+      property "sonar.coverage.jacoco.xmlReportPaths", allTestCoverageFile
+    }
+  }
+}
+
+project.tasks["sonarqube"].dependsOn "jacocoRootReport"

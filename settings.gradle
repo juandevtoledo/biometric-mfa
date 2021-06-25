@@ -1,0 +1,5 @@
+rootProject.name = 'lulo-biometric-mfa'
+include 'biometric-api'
+include 'biometric-implement'
+
+

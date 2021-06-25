@@ -1,0 +1,33 @@
+description = 'LuloBank Spring Starter libraries'
+
+dependencies {
+
+    implementation project(':biometric-api')
+
+    implementation 'org.projectlombok:lombok:1.18.8'
+    implementation "org.springframework:spring-web:${springWeb}"
+    implementation 'io.vavr:vavr:0.10.2'
+    compile 'com.google.code.gson:gson:2.6.2'
+    compile 'com.squareup.retrofit2:converter-gson:2.1.0'
+    compile group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.6.0'
+    compile group: 'org.aspectj', name: 'aspectjweaver', version: '1.9.5'
+
+
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.mockito:mockito-all:1.9.5'
+    testCompile "org.mockito:mockito-core:2.13.0"
+    testImplementation 'org.projectlombok:lombok:1.18.8'
+    testCompile group: 'com.squareup.retrofit2', name: 'retrofit-mock', version: '2.2.0'
+    testCompile "com.github.tomakehurst:wiremock-jre8:2.24.1"
+
+    compileOnly 'org.projectlombok:lombok:1.18.8'
+    annotationProcessor 'org.projectlombok:lombok:1.18.8'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.8'
+
+    sonarqube {
+        properties {
+            property 'sonar.exclusions',
+                    "**/com/lulobank/starter/**"
+        }
+    }
+}

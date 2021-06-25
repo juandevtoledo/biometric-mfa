@@ -1,0 +1,15 @@
+description = 'LuloBank core libraries'
+
+dependencies {
+  implementation 'org.projectlombok:lombok:1.18.8'
+  implementation 'com.fasterxml.jackson.core:jackson-core:2.9.9'
+  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.9'
+  implementation 'com.fasterxml.jackson.module:jackson-module-mrbean:2.9.9'
+  implementation 'io.vavr:vavr:0.10.2'
+  implementation 'org.apache.commons:commons-lang3:3.9'
+
+
+  compileOnly 'org.projectlombok:lombok:1.18.8'
+  annotationProcessor 'org.projectlombok:lombok:1.18.8'
+  testAnnotationProcessor 'org.projectlombok:lombok:1.18.8'
+}
